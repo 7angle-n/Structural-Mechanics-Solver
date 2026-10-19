@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../assets/base.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script><title>Trusses · Structural Mechanics Solver</title></head><body><script src="../assets/nav.js" data-root="../"></script>
+<main class="page"><h1>Truss analysis</h1>
+<div class="card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px">
+<div><b>Nodes</b> <small>name x y</small><textarea id="nd" rows="6">A 0 0
+B 4 0
+C 8 0
+D 2 3
+E 6 3</textarea></div>
+<div><b>Members</b> <small>node node</small><textarea id="mb" rows="6">A B
+B C
+A D
+D B
+D E
+B E
+E C</textarea></div>
+<div><b>Supports</b> <small>pin · roller x|y</small><textarea id="sp" rows="6">A pin
+C roller y</textarea></div>
+<div><b>Loads</b> <small>node Fx Fy (right, up +)</small><textarea id="ld" rows="6">D 0 -10
+E 0 -10</textarea></div>
+<div style="grid-column:1/-1"><button id="go">Solve truss</button> <small>Needs m + r = 2j (determinate). Consistent units, e.g. kN, m.</small></div></div>
+<div class="card" style="margin-top:16px"><svg id="svg" viewBox="0 0 580 310" style="width:100%"></svg></div>
+<div class="card big" id="ans" style="margin-top:16px"></div>
+<div class="card" style="margin-top:16px"><table id="tb" style="width:100%;border-collapse:collapse;text-align:left"></table></div>
+<h2>Method of sections</h2><div class="card"><div class="fgrid"><label>Cut these 3 members <input id="cut" value="DE BE BC"></label><button id="gs">Solve section</button></div>
+<div id="ans2" style="margin-top:10px"></div><div id="st2"></div></div><h2>Working</h2><div class="card" id="st"></div></main>
+<script src="../assets/ui.js"></script><script src="../assets/truss.js"></script><script>$("go").onclick=truss;$("gs").onclick=sections;truss();sections()</script></body></html>

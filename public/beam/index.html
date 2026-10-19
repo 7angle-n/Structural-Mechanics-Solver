@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beam SFD &amp; BMD solver · Structural Mechanics Solver</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script><script src="../assets/theme.js"></script>
+<link rel="stylesheet" href="../assets/base.css">
+<style>
+main.page{max-width:1100px}
+.grid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px;align-items:start}@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.row{display:flex;gap:6px;align-items:center;margin:6px 0}
+.row select{width:100px}
+.row input[type=number]{width:100%}
+.row button{padding:4px 10px}button[data-del]{background:transparent;color:#7d8f87;border-color:var(--line)}
+
+/* Preset buttons row (top) */
+.preset-row {display: flex; gap: 4px; margin: 6px 0;}
+.preset-row button {flex: 1; padding: 6px 2px; font-size: 12px; white-space: nowrap; text-align: center;}
+
+/* Length row layout */
+.length-row {display: flex; gap: 6px; align-items: center; margin: 6px 0;}
+.length-row label {display: flex; align-items: center; gap: 8px; width: 100%;}
+.length-row input {flex: 1;}
+
+/* UVL container (2-above, 2-below) */
+.uvl-container{display:flex;flex-direction:column;gap:6px;margin:6px 0;width:100%}
+.uvl-top{display:flex;gap:6px;align-items:center;width:100%}
+.uvl-top select{width:100px}
+.uvl-top button{padding:4px 10px;background:transparent;color:#7d8f87;border-color:var(--line)}
+.uvl-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+  width:100%;
+  box-sizing:border-box;
+}
+.uvl-grid label{
+  width:100%!important;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+.uvl-grid input[type=number]{
+  width:100%;
+  box-sizing:border-box;
+}
+button.go{width:100%;padding:10px;margin-top:12px}#deflect{margin-top:18px}
+svg#prev{width:100%;height:150px}.beam{stroke:#33413d;stroke-width:4}.sup{fill:none;stroke:#33413d;stroke-width:2}.ld{fill:none;stroke:#c0392b;stroke-width:2}
+svg text{fill:#c0392b;font:13px "Patrick Hand",sans-serif}.err{color:#c0392b}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:4px 8px;text-align:right}.big div{font-size:15px}p.sub{opacity:.75}
+</style></head><body><script src="../assets/nav.js" data-root="../"></script><main class="page">
+<h1>Beam shear &amp; bending moment solver</h1>
+<p class="sub">Define a determinate beam. Get reactions, V(x) and M(x) section by section, key values, and diagrams. Units: kN, m.</p>
+<div class="grid">
+<section class="card" aria-label="Beam definition">
+<div class="preset-row"><button data-pre="0">Simply supported</button><button data-pre="1">Cantilever</button><button data-pre="2">Overhang</button></div>
+ <div class="length-row"><label>Length <input id="len" type="number" step="any" min="0"> m</label></div>
+ <h3>Supports</h3><div id="sup"></div><button id="addS">Add support</button>
+ <h3>Loads</h3><div id="lds"></div><button id="addL">Add load</button>
+ <button class="go" id="run">Solve beam</button>
+ <div id="deflect"><h3>Deflection</h3><div class="row"><label>EI <input id="ei" type="number" step="any" value="1"></label><label>at x <input id="at" type="number" step="any" placeholder="optional"></label></div><button class="go" id="rund" style="margin-top:4px">Compute deflection</button><button class="go" id="runm" style="margin-top:6px">Compare all deflection methods at x</button><button class="go" id="runi" style="margin-top:6px">Solve indeterminate beam (compatibility)</button></div>
+</section>
+<section>
+ <div class="card"><svg id="prev" viewBox="0 0 640 150" role="img" aria-label="Beam preview"></svg></div>
+ <div id="out"></div><div id="def"></div>
+</section></div></main>
+<script>
+async function jr(r){try{return await r.json()}catch(e){return{detail:"The solver API was not found. Run: uvicorn api.index:app --reload and open http://127.0.0.1:8000"}}}
+const $=id=>document.getElementById(id);
+const FIELDS={point:[["x","x"],["magnitude","P"]],moment:[["x","x"],["magnitude","M"]],udl:[["x_start","x<sub>1</sub>"],["x_end","x<sub>2</sub>"],["w","w"]],uvl:[["x_start","x<sub>1</sub>"],["x_end","x<sub>2</sub>"],["w_start","w<sub>1</sub>"],["w_end","w<sub>2</sub>"]]};
+const PRE=[
+ {length:10,supports:[{type:"pin",x:0},{type:"roller",x:10}],loads:[{type:"point",x:3,magnitude:10},{type:"udl",x_start:5,x_end:10,w:4}]},
+ {length:4,supports:[{type:"fixed",x:0}],loads:[{type:"udl",x_start:0,x_end:4,w:5},{type:"point",x:4,magnitude:8}]},
+ {length:8,supports:[{type:"pin",x:0},{type:"roller",x:6}],loads:[{type:"uvl",x_start:0,x_end:6,w_start:0,w_end:6},{type:"point",x:8,magnitude:10}]}];
+let S=structuredClone(PRE[0]);
+const opts=(a,v)=>a.map(o=>`<option ${o==v?"selected":""}>${o}</option>`).join("");
+const num=(l,i,k,t,v)=>`<label>${t}<input type="number" step="any" data-l="${l}" data-i="${i}" data-k="${k}" value="${v}"></label>`;
+function form(){
+ $("len").value=S.length;
+ $("sup").innerHTML=S.supports.map((t,i)=>`<div class="row"><select data-l="supports" data-i="${i}" data-k="type" aria-label="Support type">${opts(["pin","roller","fixed"],t.type)}</select>${num("supports",i,"x","x",t.x)}<button data-del="supports" data-i="${i}" aria-label="Remove support">×</button></div>`).join("");
+$("lds").innerHTML=S.loads.map((t,i)=>{
+  const fields = FIELDS[t.type].map(([k,n])=>num("loads",i,k,n,t[k]));
+  if(t.type=="uvl"){
+    return `<div class="uvl-container">
+      <div class="uvl-top">
+        <select data-l="loads" data-i="${i}" data-k="type" aria-label="Load type">${opts(Object.keys(FIELDS),t.type)}</select>
+        <div style="flex:1"></div>
+        <button data-del="loads" data-i="${i}" data-aria-label="Remove load">×</button>
+      </div>
+      <div class="uvl-grid">${fields.join("")}</div>
+    </div>`;
+  } else {
+    return `<div class="row">
+      <select data-l="loads" data-i="${i}" data-k="type" aria-label="Load type">${opts(Object.keys(FIELDS),t.type)}</select>
+      ${fields.join("")}
+      <button data-del="loads" data-i="${i}" aria-label="Remove load">×</button>
+    </div>`;
+  }
+}).join("");
+ draw();
+}
+document.addEventListener("input",e=>{const t=e.target;if(t.id=="len"){S.length=parseFloat(t.value)||0;draw()}else if(t.type=="number"&&t.dataset.l){S[t.dataset.l][t.dataset.i][t.dataset.k]=parseFloat(t.value)||0;draw()}});
+document.addEventListener("change",e=>{const d=e.target.dataset;if(d.k=="type"){const o={type:e.target.value};if(d.l=="supports")o.x=S.supports[d.i].x;else FIELDS[o.type].forEach(([k])=>o[k]=0);S[d.l][d.i]=o;form()}});
+document.addEventListener("click",e=>{const d=e.target.dataset;if(d.del){S[d.del].splice(d.i,1);form()}if(d.pre){S=structuredClone(PRE[d.pre]);form()}});
+$("addS").onclick=()=>{S.supports.push({type:"roller",x:S.length});form()};
+$("addL").onclick=()=>{S.loads.push({type:"point",x:S.length/2,magnitude:10});form()};
+function draw(){
+ const L=S.length||1,m=30,X=v=>m+v/L*(640-2*m),y=75;let g=`<line class="beam" x1="${X(0)}" y1="${y}" x2="${X(L)}" y2="${y}"/>`;
+ const arr=(x,h,d)=>`<path class="ld" d="M${x} ${y-d*h}V${y-d*2}m-4 ${-7*d}l4 ${7*d}l4 ${-7*d}"/>`;
+ S.supports.forEach(t=>{const x=X(t.x);g+=t.type=="fixed"?`<rect class="sup" x="${x-5}" y="${y-22}" width="10" height="44"/>`:`<path class="sup" d="M${x} ${y+3}l-11 20h22z"/>`+(t.type=="roller"?`<circle class="sup" cx="${x}" cy="${y+28}" r="4"/>`:"")});
+ const mw=Math.max(1,...S.loads.map(l=>Math.abs(l.w??l.w_start??0)),...S.loads.map(l=>Math.abs(l.w_end??0)));
+ S.loads.forEach(l=>{
+  if(l.type=="point"){const d=l.magnitude<0?-1:1;g+=arr(X(l.x),45,d)+`<text x="${X(l.x)+6}" y="${y-d*48}">${l.magnitude}</text>`}
+  else if(l.type=="moment")g+=`<text x="${X(l.x)-6}" y="${y-18}" style="font-size:22px">${l.magnitude<0?"↺":"↻"}</text>`;
+  else{const w1=l.w??l.w_start,w2=l.w??l.w_end,n=8;for(let i=0;i<=n;i++){const t=i/n,w=w1+(w2-w1)*t,h=8+36*Math.abs(w)/mw;if(Math.abs(w)>0)g+=arr(X(l.x_start+(l.x_end-l.x_start)*t),h,w<0?-1:1)}
+   g+=`<text x="${X(l.x_start)}" y="${y-56}">${l.w??l.w_start+"→"+l.w_end}</text>`}});
+ $("prev").innerHTML=g;
+}
+const T=(el,t)=>katex.render(t,el,{displayMode:true,throwOnError:false});
+async function run(){
+ const out=$("out");out.innerHTML="<p>Solving…</p>";
+ let r;try{r=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(S)})}catch(e){out.innerHTML='<p class="err">Could not reach the solver.</p>';return}
+ const d=await jr(r);if(!r.ok){out.innerHTML=`<p class="err">${d.detail}</p>`;return}
+ const f=v=>(+v.toFixed(3)).toString(),R=d.reactions,E=d.extremes;
+ out.innerHTML=`<h2>Answer</h2><div class="card big">${Object.entries(R).map(([k,v])=>`<div>${k}${k[0]=="M"?" (ccw)":" (up)"}<b>${f(v)}</b></div>`).join("")}
+ <div>Max |V|<b>${f(E.V_max_abs)}</b></div><div>Max M (sagging)<b>${f(E.M_max.value)}</b>at x = ${f(E.M_max.x)}</div><div>Min M (hogging)<b>${f(E.M_min.value)}</b>at x = ${f(E.M_min.x)}</div></div>
+ <div class="card" style="margin-top:14px"><div id="sfd"></div><div id="bmd"></div></div>
+ <h2>Step-by-step solution</h2><div id="steps" class="card"></div>
+ <h2>Numerical values</h2><div class="card"><table><tr><th>x</th><th>V</th><th>M</th></tr>${d.table.map(t=>`<tr><td>${f(t.x)}</td><td>${f(t.V)}</td><td>${f(t.M)}</td></tr>`).join("")}</table>
+ <p style="font:12px system-ui;opacity:.7">V is taken just right of each x (last row: just left of the end).</p></div>`;
+ d.steps.forEach(s=>{const h=document.createElement("h3");h.textContent=s.title;$("steps").append(h);s.eqs.forEach(q=>{const e=document.createElement("div");e.className="eq";$("steps").append(e);T(e,q)})});
+ const p=d.plot,c=getComputedStyle(document.body).color,base=t=>({title:t,margin:{t:36,l:50,r:12,b:36},xaxis:{title:"x (m)"},paper_bgcolor:"rgba(0,0,0,0)",plot_bgcolor:"rgba(0,0,0,0)",font:{color:c},height:260});
+ Plotly.newPlot("sfd",[{x:p.x,y:p.V,fill:"tozeroy",line:{color:"#1d4ed8",width:2}}],base("Shear force diagram (V)"),{responsive:true});
+ Plotly.newPlot("bmd",[{x:p.x,y:p.M,fill:"tozeroy",line:{color:"#c0392b",width:2}}],{...base("Bending moment diagram (M)"),yaxis:{autorange:"reversed"}},{responsive:true});
+}
+async function runDef(){const o=$("def");o.innerHTML="<p>Solving…</p>";const at=$("at").value;
+ const r=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...S,mode:"deflection",EI:+$("ei").value||1,at:at===""?null:+at})});
+ const d=await jr(r);if(!r.ok){o.innerHTML=`<p class="err">${d.detail}</p>`;return}const g=v=>(+v.toPrecision(6)).toString(),E=d.extremes;
+ o.innerHTML=`<h2>Deflection (double integration)</h2><div class="card big"><div>Max downward y<b>${g(E.y_min.value)}</b>at x = ${g(E.y_min.x)}</div><div>Max upward y<b>${g(E.y_max.value)}</b>at x = ${g(E.y_max.x)}</div>${d.at?`<div>y at x = ${g(d.at.x)}<b>${g(d.at.y)}</b></div><div>slope there<b>${g(d.at.theta)}</b></div>`:""}</div>
+ <div class="card" style="margin-top:14px"><div id="dfl"></div></div><h2>Working</h2><div class="card" id="dst"></div>`;
+ d.steps.forEach(s=>{const h=document.createElement("h3");h.textContent=s.title;$("dst").append(h);s.eqs.forEach(q=>{const e=document.createElement("div");e.className="eq";$("dst").append(e);T(e,q)})});
+ Plotly.newPlot("dfl",[{x:d.plot.x,y:d.plot.y,line:{color:"#1d4ed8",width:2}}],{title:"Deflected shape y(x), upward +",margin:{t:36,l:60,r:12,b:36},xaxis:{title:"x (m)"},paper_bgcolor:"rgba(0,0,0,0)",plot_bgcolor:"rgba(0,0,0,0)",font:{color:getComputedStyle(document.body).color},height:280},{responsive:true})}
+async function runInd(){const o=$("def");o.innerHTML="<p>Solving…</p>";
+ const r=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...S,mode:"indeterminate",EI:+$("ei").value||1})});
+ const d=await jr(r);if(!r.ok){o.innerHTML=`<p class="err">${d.detail}</p>`;return}const g=v=>(+v.toPrecision(5)).toString(),E=d.extremes,p=d.plot;
+ o.innerHTML=`<h2>Indeterminate beam (compatibility method)</h2><div class="card big">${Object.entries(d.reactions).map(([k,v])=>`<div>${k.replace("_","")}<b>${g(v)}</b></div>`).join("")}<div>Max M<b>${g(E.M_max.value)}</b>at x = ${g(E.M_max.x)}</div><div>Min M<b>${g(E.M_min.value)}</b>at x = ${g(E.M_min.x)}</div><div>Max |y|<b>${g(Math.max(Math.abs(E.y_min.value),Math.abs(E.y_max.value)))}</b>for the EI entered</div></div>
+ <div class="card" style="margin-top:14px"><div id="i1"></div><div id="i2"></div><div id="i3"></div></div><h2>Working</h2><div class="card" id="dst"></div>`;
+ d.steps.forEach(s=>{const h=document.createElement("h3");h.textContent=s.title;$("dst").append(h);s.eqs.forEach(q=>{const e=document.createElement("div");e.className="eq";$("dst").append(e);T(e,q)})});
+ const L=(t,rev)=>({title:t,margin:{t:36,l:60,r:12,b:34},xaxis:{title:"x (m)"},yaxis:{autorange:rev?"reversed":true},paper_bgcolor:"rgba(0,0,0,0)",plot_bgcolor:"rgba(0,0,0,0)",font:{color:getComputedStyle(document.body).color},height:240});
+ Plotly.newPlot("i1",[{x:p.x,y:p.V,fill:"tozeroy",line:{color:"#1d4ed8"}}],L("Shear force diagram"),{responsive:true});
+ Plotly.newPlot("i2",[{x:p.x,y:p.M,fill:"tozeroy",line:{color:"#c0392b"}}],L("Bending moment diagram",true),{responsive:true});
+ Plotly.newPlot("i3",[{x:p.x,y:p.y,line:{color:"#4f7c6a"}}],L("Deflected shape (up +)"),{responsive:true})}
+async function runMeth(){const o=$("def"),at=$("at").value;if(at===""){o.innerHTML='<p class="err">Enter the position in the "at x" box first.</p>';return}
+ const r=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...S,mode:"methods",EI:+$("ei").value||1,at:+at})});
+ const d=await jr(r);if(!r.ok){o.innerHTML=`<p class="err">${d.detail}</p>`;return}const g=v=>(+v.toPrecision(6)).toString();
+ o.innerHTML=`<h2>Deflection at x = ${g(d.at)} by each method</h2><div class="card"><table><tr><th style="text-align:left">Method</th><th>y (up +)</th><th>slope θ</th></tr>${d.results.map(m=>`<tr><td style="text-align:left">${m.name}</td><td>${m.y===undefined?"n/a":g(m.y)}</td><td>${m.theta===undefined?"n/a":g(m.theta)}</td></tr>`).join("")}</table></div><div id="mm"></div>`;
+ d.results.forEach(m=>{const c=document.createElement("div");$("mm").append(c);const h=document.createElement("h2");h.textContent=m.name;c.append(h);const k=document.createElement("div");k.className="card";c.append(k);
+  if(!m.steps){k.textContent=m.note;return}m.steps.forEach(s=>{const h3=document.createElement("h3");h3.textContent=s.title;k.append(h3);s.eqs.forEach(q=>{const e=document.createElement("div");e.className="eq";k.append(e);T(e,q)})})})}
+$("runm").onclick=runMeth;$("runi").onclick=runInd;$("rund").onclick=runDef;$("run").onclick=run;form();
+</script></body></html>

@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../assets/base.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script><script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script><script src="../assets/theme.js"></script><title>Stress distribution · Structural Mechanics Solver</title></head><body><script src="../assets/nav.js" data-root="../"></script>
+<main class="page"><h1>Stress distribution across a section</h1>
+<div class="card"><p style="margin-top:0">Enter the internal actions at a section (for example from the beam solver). Consistent units, e.g. N, mm, MPa. Sagging M is positive.</p>
+<div class="fgrid"><label>Section <select id="sh"><option value="rect">Rectangle (b, h)</option><option value="circ">Circle (d)</option><option value="isec">I-section (bf, tf, tw, hw)</option></select></label> <span id="dims" style="display:contents"></span>
+<label>M <input id="M" type="number" value="50000000"></label><label>V <input id="V" type="number" value="20000"></label><label>Axial N <input id="N" type="number" value="0"></label> <button id="go">Solve</button></div></div>
+<div class="card big" id="ans" style="margin-top:16px"></div>
+<div class="card" style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px"><div id="p1"></div><div id="p2"></div></div>
+<h2>Working</h2><div class="card" id="st"></div></main>
+<script src="../assets/ui.js"></script><script src="../assets/stress.js"></script><script>$("sh").onchange=dims;$("go").onclick=stress;dims();stress()</script></body></html>

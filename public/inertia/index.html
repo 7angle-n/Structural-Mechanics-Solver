@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../assets/base.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script><title>Moment of inertia · Structural Mechanics Solver</title></head><body><script src="../assets/nav.js" data-root="../"></script><main class="page"><h1>Moment of inertia</h1>
+<div class="card"><div class="fgrid"><label>Shape <select id="sh"><option value="rect">Rectangle (b, h)</option><option value="hrect">Hollow rectangle (B, H, b, h)</option><option value="circ">Circle (d)</option><option value="hcirc">Hollow circle (D, d)</option><option value="tri">Triangle (b, h)</option><option value="semi">Semicircle (r)</option></select></label>
+<span id="dims" style="display:contents"></span><label>Axis offset d <input id="off" type="number" value="0"></label> <button id="go">Solve</button></div></div>
+<div class="card big" id="ans" style="margin-top:16px"></div><h2>Working</h2><div class="card" id="st"></div>
+<h2>Composite section</h2><div class="card"><p>One rectangle per line: <code>b h y_bottom +</code> (use <code>-</code> for a hole). y is measured from your reference base.</p>
+<textarea id="cp" rows="4">100 20 80 +
+20 80 0 +</textarea><p><button id="go2">Solve composite</button></p></div><div class="card" id="st2" style="margin-top:16px"></div></main>
+<script src="../assets/ui.js"></script><script>
+const D={rect:["b","h"],hrect:["B","H","b","h"],circ:["d"],hcirc:["D","d"],tri:["b","h"],semi:["r"]},pi=Math.PI;
+function dims(){$("dims").innerHTML=D[$("sh").value].map((n,i)=>`<label>${n} <input type="number" class="dm" value="${[60,100,40,80][i]}"></label>`).join("")}
+function run(){const s=$("sh").value,v=[...document.querySelectorAll(".dm")].map(e=>+e.value),o=+$("off").value;let A,Ix,Iy,yc,L;
+ if(s=="rect"){const[b,h]=v;A=b*h;Ix=b*h**3/12;Iy=h*b**3/12;yc=h/2;L=[`I_x=\\int y^2\\,b\\,dy=\\frac{bh^3}{12}=\\frac{${b}\\cdot${h}^3}{12}=${f(Ix)}`,`I_y=\\frac{hb^3}{12}=${f(Iy)}`]}
+ if(s=="hrect"){const[B,H,b,h]=v;A=B*H-b*h;Ix=(B*H**3-b*h**3)/12;Iy=(H*B**3-h*b**3)/12;yc=H/2;L=[`I_x=\\frac{BH^3-bh^3}{12}=\\frac{${B}\\cdot${H}^3-${b}\\cdot${h}^3}{12}=${f(Ix)}`,`I_y=\\frac{HB^3-hb^3}{12}=${f(Iy)}`]}
+ if(s=="circ"){const[d]=v;A=pi*d*d/4;Ix=Iy=pi*d**4/64;yc=d/2;L=[`I_x=I_y=\\int y^2dA=\\frac{\\pi d^4}{64}=${f(Ix)}`,`J=\\frac{\\pi d^4}{32}=${f(2*Ix)}`]}
+ if(s=="hcirc"){const[D1,d]=v;A=pi*(D1*D1-d*d)/4;Ix=Iy=pi*(D1**4-d**4)/64;yc=D1/2;L=[`I_x=I_y=\\frac{\\pi(D^4-d^4)}{64}=${f(Ix)}`,`J=${f(2*Ix)}`]}
+ if(s=="tri"){const[b,h]=v;A=b*h/2;Ix=b*h**3/36;Iy=h*b**3/48;yc=h/3;L=[`I_{x,base}=\\frac{bh^3}{12}=${f(b*h**3/12)}`,`I_{x_c}=I_{x,base}-A\\left(\\frac h3\\right)^2=\\frac{bh^3}{36}=${f(Ix)}`,`I_{y_c}=\\frac{hb^3}{48}=${f(Iy)}\\ (\\text{isosceles})`]}
+ if(s=="semi"){const[r]=v;A=pi*r*r/2;yc=4*r/(3*pi);Iy=pi*r**4/8;const base=pi*r**4/8;Ix=base-A*yc*yc;L=[`\\bar y=\\frac{4r}{3\\pi}=${f(yc)}`,`I_{x,base}=\\frac{\\pi r^4}{8}=${f(base)}`,`I_{x_c}=I_{x,base}-A\\bar y^2=\\left(\\frac\\pi8-\\frac8{9\\pi}\\right)r^4=${f(Ix)}`,`I_y=\\frac{\\pi r^4}{8}=${f(Iy)}`]}
+ L=[{h:"Centroidal moments"},`A=${f(A)}`,...L];if(o)L.push({h:"Parallel-axis theorem"},`I=I_c+Ad^2=${f(Ix)}+${f(A)}\\cdot${o}^2=${f(Ix+A*o*o)}`);
+ $("ans").innerHTML=`<div>A<b>${f(A)}</b></div><div>Ix (centroid)<b>${f(Ix)}</b></div><div>Iy<b>${f(Iy)}</b></div><div><i style="text-decoration:overline">y</i> from base<b>${f(yc)}</b></div>`+(o?`<div>I about offset axis<b>${f(Ix+A*o*o)}</b></div>`:"");steps($("st"),L)}
+function comp(){const R=$("cp").value.trim().split("\n").map(l=>l.trim().split(/\s+/)).filter(a=>a.length>=3).map(a=>{const[b,h,y]=a.map(Number),sg=a[3]=="-"?-1:1;return{b,h,y,sg,A:sg*b*h,yc:y+h/2}});
+ const A=R.reduce((s,r)=>s+r.A,0),yb=R.reduce((s,r)=>s+r.A*r.yc,0)/A,I=R.reduce((s,r)=>s+r.sg*(r.b*r.h**3/12+r.b*r.h*(r.yc-yb)**2),0);
+ steps($("st2"),[{h:"Areas and centroids"},...R.map((r,i)=>`A_{${i+1}}=${f(r.A)},\\ \\bar y_{${i+1}}=${f(r.yc)}`),{h:"Centroid of the section"},`\\bar y=\\frac{\\sum A_i\\bar y_i}{\\sum A_i}=\\frac{${f(R.reduce((s,r)=>s+r.A*r.yc,0))}}{${f(A)}}=${f(yb)}`,{h:"Parallel-axis theorem"},...R.map((r,i)=>`I_{${i+1}}=${r.sg<0?"-":""}\\left[\\frac{${r.b}\\cdot${r.h}^3}{12}+${f(r.b*r.h)}(${f(r.yc-yb)})^2\\right]=${f(r.sg*(r.b*r.h**3/12+r.b*r.h*(r.yc-yb)**2))}`),{h:"Result"},`I_{x_c}=\\sum I_i=${f(I)}`])}
+$("sh").onchange=()=>{dims()};$("go").onclick=run;$("go2").onclick=comp;dims();run();comp();</script></body></html>

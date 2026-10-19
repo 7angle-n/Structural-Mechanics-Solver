@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../assets/base.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script><script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script><script src="../assets/theme.js"></script><title>Axial stress · Structural Mechanics Solver</title></head><body><script src="../assets/nav.js" data-root="../"></script>
+<main class="page"><h1>Axial stress &amp; deformation</h1>
+<div class="card"><p>One segment per line: <code>L &nbsp; A &nbsp; E &nbsp; P &nbsp; [α &nbsp; ΔT]</code>, where P is the external load applied at the right end of that segment (tension +). Optional α and ΔT add thermal expansion (α·ΔT·L). Left end is fixed. Use consistent units, e.g. mm, mm², MPa, N.</p>
+<textarea id="tx" rows="4">400 500 200000 30000
+300 300 70000 -10000</textarea>
+<div class="fgrid"><label>Gap at right end <input id="gap" type="number" value="0" step="any"></label> <label>Right end <select id="sup"><option value="free">free</option><option value="both">fixed (indeterminate)</option></select></label> <button id="go">Solve</button></div></div>
+<div class="card big" id="ans" style="margin-top:16px"></div>
+<div class="card" style="margin-top:16px"><div id="p1"></div><div id="p2"></div><div id="p3"></div></div>
+<h2>Working</h2><div class="card" id="st"></div></main>
+<script src="../assets/ui.js"></script><script src="../assets/bar.js"></script><script>$("go").onclick=()=>bar("axial");bar("axial")</script></body></html>

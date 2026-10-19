@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../assets/base.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script><script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script><script src="../assets/theme.js"></script><title>Columns and buckling · Structural Mechanics Solver</title></head><body><script src="../assets/nav.js" data-root="../"></script>
+<main class="page"><h1>Columns &amp; buckling</h1>
+<div class="card"><p style="margin-top:0">Use consistent units, for example mm, MPa and N.</p>
+<div class="fgrid"><label>Section <select id="sh"><option value="rect">Rectangle (b, h)</option><option value="circ">Circle (d)</option><option value="hcirc">Hollow circle (D, d)</option><option value="gen">General (A, I, c)</option></select></label> <span id="dims" style="display:contents"></span>
+<label>Length L <input id="Lc" type="number" value="3000"></label><label>E <input id="E" type="number" value="200000"></label>
+<label>Ends <select id="K"><option value="1">pinned–pinned (K = 1)</option><option value="2">fixed–free (K = 2)</option><option value="0.7">fixed–pinned (K = 0.7)</option><option value="0.5">fixed–fixed (K = 0.5)</option></select></label>
+<label>σy <input id="sy" type="number" value="250"></label><label>FS <input id="fs" type="number" value="2" step="any"></label><label>Applied P <input id="P" type="number" placeholder="optional"></label><label>Eccentricity e <input id="e" type="number" placeholder="optional"></label>
+<button id="go">Solve</button></div></div>
+<div class="card big" id="ans" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><div id="pl"></div></div>
+<h2>Working</h2><div class="card" id="st"></div></main>
+<script src="../assets/ui.js"></script><script src="../assets/column.js"></script><script>$("sh").onchange=dims;$("go").onclick=col;dims();col()</script></body></html>

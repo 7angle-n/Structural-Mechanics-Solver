@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../assets/base.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script><title>Mohr's circle · Structural Mechanics Solver</title></head><body><script src="../assets/nav.js" data-root="../"></script><main class="page"><h1>Mohr's circle</h1>
+<div class="card"><div class="fgrid"><label>σx <input id="sx" type="number" value="80"></label><label>σy <input id="sy" type="number" value="-40"></label><label>τxy <input id="t" type="number" value="30"></label><label>θ (°) <input id="th" type="number" value="25"></label> <button id="go">Solve</button></div>
+<p style="font-size:.85em;color:#7d8f87">Tension +. τxy positive on the +x face pointing +y. θ measured counter-clockwise from the x-axis. Any stress unit.</p></div>
+<div class="card big" id="ans" style="margin-top:16px"></div><div class="card" style="margin-top:16px"><svg id="svg" viewBox="0 0 520 320" style="width:100%"></svg></div>
+<h2>Working</h2><div class="card" id="st"></div></main><script src="../assets/ui.js"></script><script>
+function run(){const sx=+$("sx").value,sy=+$("sy").value,t=+$("t").value,th=+$("th").value,r=Math.PI/180;
+const c=(sx+sy)/2,d=(sx-sy)/2,R=Math.hypot(d,t),ph=Math.atan2(t,d),s1=c+R,s2=c-R,tp=ph/2/r,ts=tp-45,a=th*r,
+ xp=c+d*Math.cos(2*a)+t*Math.sin(2*a),yp=2*c-xp,tt=-d*Math.sin(2*a)+t*Math.cos(2*a);
+$("ans").innerHTML=`<div>σ<sub>1</sub><b>${f(s1)}</b></div><div>σ<sub>2</sub><b>${f(s2)}</b></div><div>τmax<b>${f(R)}</b></div><div>θp<b>${f(tp)}°</b></div><div>θs<b>${f(ts)}°</b></div>`;
+steps($("st"),[{h:"Centre and radius"},`\\sigma_{avg}=\\frac{\\sigma_x+\\sigma_y}{2}=\\frac{${sx}+${sy}}{2}=${f(c)}`,`R=\\sqrt{\\left(\\frac{\\sigma_x-\\sigma_y}{2}\\right)^2+\\tau_{xy}^2}=\\sqrt{${f(d)}^2+${t}^2}=${f(R)}`,
+{h:"Principal stresses"},`\\sigma_{1,2}=\\sigma_{avg}\\pm R=${f(s1)},\\ ${f(s2)}`,`\\tan 2\\theta_p=\\frac{2\\tau_{xy}}{\\sigma_x-\\sigma_y}\\Rightarrow \\theta_p=${f(tp)}^\\circ\\ (\\sigma_1\\text{ acts on this plane}),\\ ${f(tp+90)}^\\circ\\ (\\sigma_2)`,
+{h:"Maximum shear"},`\\tau_{max}=R=${f(R)},\\ \\theta_s=\\theta_p-45^\\circ=${f(ts)}^\\circ,\\ \\sigma=${f(c)}`,
+{h:"Stress on a plane at θ = "+th+"°"},`\\sigma_{x'}=\\sigma_{avg}+\\frac{\\sigma_x-\\sigma_y}{2}\\cos2\\theta+\\tau_{xy}\\sin2\\theta=${f(xp)}`,`\\sigma_{y'}=${f(yp)},\\quad \\tau_{x'y'}=-\\frac{\\sigma_x-\\sigma_y}{2}\\sin2\\theta+\\tau_{xy}\\cos2\\theta=${f(tt)}`]);
+const k=110/(R||1),X=v=>260+(v-c)*k,Y=v=>160-v*k;let g=`<line stroke="#a8c3b3" x1="10" x2="510" y1="160" y2="160"/><line stroke="#a8c3b3" x1="${X(0)}" x2="${X(0)}" y1="10" y2="310"/><circle cx="260" cy="160" r="${R*k}" fill="#b9cfe033" stroke="#4f7c6a" stroke-width="2.5"/>`;
+const P=(u,v,l,col)=>`<circle cx="${X(u)}" cy="${Y(v)}" r="5" fill="${col}"/><text x="${X(u)+8}" y="${Y(v)-8}" fill="${col}" font-size="15">${l}</text>`;
+g+=`<line x1="${X(sx)}" y1="${Y(t)}" x2="${X(sy)}" y2="${Y(-t)}" stroke="#7d8f87" stroke-dasharray="4"/>`+P(sx,t,"X","#c0392b")+P(sy,-t,"Y","#c0392b")+P(s1,0,"σ<tspan dy=\"3\" font-size=\"11\">1</tspan>","#1d4ed8")+P(s2,0,"σ<tspan dy=\"3\" font-size=\"11\">2</tspan>","#1d4ed8")+P(c,R,"τmax","#4f7c6a")+P(c,-R,"","#4f7c6a")+P(xp,tt,"θ","#a0612b")+P(c,0,"C","#33413d");
+$("svg").innerHTML=g}
+$("go").onclick=run;run();</script></body></html>

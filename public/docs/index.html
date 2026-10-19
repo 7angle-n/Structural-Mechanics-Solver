@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Documentation · Structural Mechanics Solver</title>
+<link rel="stylesheet" href="../assets/base.css">
+<style>pre{background:#091224;border:1px solid var(--line);border-radius:8px;padding:14px;overflow:auto;font-size:13px}td,th{text-align:left;border-bottom:1px solid var(--line);padding:6px 10px}table{border-collapse:collapse;width:100%;font-size:14px}li{margin:4px 0}</style></head><body>
+<script src="../assets/nav.js" data-root="../"></script>
+<main class="page"><h1>Documentation</h1><p class="mono" style="color:var(--soft);font-size:13px">Structural Mechanics Solver · created by Nafis Al Zahid</p>
+<h2>Pages</h2><div class="card"><table><tr><th>Page</th><th>What it does</th><th>Runs</th></tr>
+<tr><td><a href="../beam/index.html">Beams</a></td><td>SFD/BMD, reactions; deflection by integration, conjugate beam, moment-area, superposition, unit load; indeterminate beams</td><td>Python API</td></tr>
+<tr><td><a href="../truss/index.html">Trusses</a></td><td>Method of joints and method of sections</td><td>Browser</td></tr>
+<tr><td><a href="../stress/index.html">Stress</a></td><td>Bending and shear stress distribution</td><td>Browser</td></tr>
+<tr><td><a href="../axial/index.html">Axial</a>, <a href="../torsion/index.html">Torsion</a></td><td>Stepped bars (thermal, gap, fixed–fixed); shafts, gear pairs, shaft sizing</td><td>Browser</td></tr>
+<tr><td><a href="../columns/index.html">Columns</a></td><td>Euler, Johnson, secant</td><td>Browser</td></tr>
+<tr><td><a href="../inertia/index.html">Inertia</a>, <a href="../mohr/index.html">Mohr</a></td><td>Section properties, composite sections; plane stress</td><td>Browser</td></tr></table></div>
+<h2>Sign conventions</h2><div class="card"><ul><li>Beam: loads down +, reactions up +, applied couples clockwise +, sagging moment +; deflection y up +, slope counter-clockwise +.</li><li>Truss and bars: tension +. Mohr's circle: τ<sub>xy</sub> positive on the +x face pointing +y; θ counter-clockwise from x.</li><li>Units are not enforced. Use a consistent set (for example kN, m, kN·m² or N, mm, MPa).</li></ul></div>
+<h2>Run locally</h2><pre>python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+pytest
+uvicorn api.index:app --reload   # open http://127.0.0.1:8000</pre>
+<p>Open the site through that address. Opening the HTML files directly shows the pages, but the beam solver needs the server.</p>
+<h2>API</h2><pre>POST /api/solve
+{"length":10,"supports":[{"type":"pin","x":0},{"type":"roller","x":10}],
+ "loads":[{"type":"point","x":3,"magnitude":10}],
+ "mode":"deflection" | "methods" | "indeterminate",   // optional
+ "EI":4000, "at":5}                                   // for those modes</pre>
+<h2>Deploy</h2><pre>npm i -g vercel
+vercel          # preview
+vercel --prod</pre></main></body></html>
